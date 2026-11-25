@@ -29,7 +29,8 @@
 - **OpenCL**：11/11 全项通过（含 `RAW` 与 `Feature Matching` 校验），得分 **47,454**（[记录](https://browser.geekbench.com/v7/gpu/438572)）。
 - **OpenGL**：通过 Apple `AppleMetalOpenGLRenderer` 运行于 GPU（`phxboot-gl`）。
 - **视频硬件解码**：VCN 4.0（HEVC / AV1）硬件解码可用（`PhxVideoDecoder.bundle` + `libphxdec_hevc.dylib`）。
-- **屏幕共享（Screen Sharing）**：已修复 `ScreensharingAgent` 下 DRM-linear `BGRA8` → `RGBA8` 纹理视图失败导致的黑屏问题。
+- **HiDPI 缩放支持**：`VermilionAccel.kext` 已内置 `IOFBScalerInfo` 发布与缩放 HiDPI 时序校验，配合自定义显示器 Override（如 [`open-hidpi`](https://github.com/JayHygge/open-hidpi)）即可在 2K 屏上开启 `1920×1080 HiDPI`（`3840×2160` 渲染缓冲 @ 165 Hz）等原生高刷缩放模式。
+- **屏幕共享（Screen Sharing）**：已修复原生 2K（`BGRA8` → `RGBA8` 纹理视图格式列表）及任意缩放 / HiDPI 分辨率（`ScreensharingAgent` OpenCL 缩放核写入带 swizzle 纹理视图落入 dummy 纹理）导致的黑屏问题。
 - **电源与风扇管理**：待机自动关闭 SDMA、开启 GFX Clock Gating 与空闲 DPM（非 165 Hz 极短 VBLANK 模式下自动回落低频，防止 PMFW 卡死）。
 - **已知限制**：AMD 平台无 Apple Hypervisor（不支持依赖 HVF 的虚拟机）、暂未启用系统 S3 睡眠、DRM 受保护视频（如 Apple TV 影片）受限于 Apple 硬件解密路径。
 
@@ -89,7 +90,8 @@
 # 1) 安装 VermilionAccel.kext 到 /Library/Extensions 并重建 AuxKC
 sudo cp -R PostInstall/Extensions/VermilionAccel.kext /Library/Extensions/
 sudo chown -R root:wheel /Library/Extensions/VermilionAccel.kext
-sudo kmutil install --volume-root / --update-all
+sudo kmutil load -p /Library/Extensions/VermilionAccel.kext
+# 在“系统设置 -> 隐私与安全性”点击允许扩展并重启以重建 Auxiliary Kernel Collection
 
 # 2) 安装 NVMTLDriver.bundle、Mesa RADV 与进程白名单
 sudo mkdir -p /Library/GPUBundles/nvmtl/aircache /Library/GPUBundles/nvmtl/spvcache
@@ -142,6 +144,7 @@ sudo reboot
 > - `phxboot-irqwait`：启用硬件中断式 fence 等待（降低 GPU 等待延迟）
 > - `phxboot-bovram`：启用本地 GDDR6 显存 BO 池（可在文件内按逗号追加需要高速显存的游戏/应用进程名，注意不要加入 `WindowServer`）
 > - *(可选)* VCN 视频解码插件 `PostInstall/VideoPlugIns/PhxVideoDecoder.bundle` 需安装到 `/System/Library/Video/Plug-Ins/`（会解除系统卷封印，如不需要系统级 VideoToolbox 硬解可跳过）。
+> - *(可选)* **2K 显示器 HiDPI 缩放**：`VermilionAccel.kext` 已支持通用缩放 HiDPI 模式，本仓库不包含针对特定显示器的 Override 文件；如需在 2560×1440 等非 4K 屏幕上启用 `1920×1080 HiDPI` 等缩放档位，可使用 [JayHygge/open-hidpi](https://github.com/JayHygge/open-hidpi) 为自己的显示器生成 `/Library/Displays/Contents/Resources/Overrides/DisplayVendorID-*/DisplayProductID-*` 并重启生效。
 
 ---
 
@@ -151,7 +154,7 @@ sudo reboot
 
 ### GPU 加速与本机移植项目
 
-- **本项目使用的 Navi 32 移植分支**：[KawaiiHachimi/vermilion-navi32](https://github.com/KawaiiHachimi/vermilion-navi32)（`navi32-port` 分支，在 RX 7800 XT 上完成了 Navi 32 适配、165 Hz 切率与短 VBLANK 保护、Geekbench 7 Metal/OpenCL 翻译修复与屏幕共享纹理视图修复）
+- **本项目使用的 Navi 32 移植分支**：[KawaiiHachimi/vermilion-navi32](https://github.com/KawaiiHachimi/vermilion-navi32)（`navi32-port` 分支，在 RX 7800 XT 上完成了 Navi 32 适配、165 Hz 切率与短 VBLANK 保护、通用 HiDPI 缩放支持、Geekbench 7 Metal/OpenCL 翻译修复与屏幕共享全分辨率修复）
 - **上游 Vermilion XTX**：[ownback/vermilion-xtx](https://github.com/ownback/vermilion-xtx)（1440p 高刷回放、VRAM BO 池、中断等待、空闲功耗管理、VCN 解码与桌面稳定性改进）
 - **原始上游 Vermilion**：[leolivm/vermilion](https://github.com/leolivm/vermilion)（RDNA 3 macOS 引导、帧缓冲与 Metal-over-RADV 原始架构）
 - **NullMoth**：[nullmoth/nvidia-macos-driver](https://github.com/nullmoth/nvidia-macos-driver)（`NVMTLDriver` Metal-on-Vulkan 插件、`libnvmtl_translate` AIR→SPIR-V 翻译器及 `NVAccel` 的原始来源）
@@ -167,4 +170,5 @@ sudo reboot
 - **Realtek 2.5G 网卡**：[Mieze/RTL812xLucy](https://github.com/Mieze/RTL812xLucy)
 - **ALC897 声卡辅助**：[laobamac/SimpleHDA](https://github.com/laobamac/SimpleHDA)
 - **USB 定制**：[USBToolBox/kext](https://github.com/USBToolBox/kext)
+- **HiDPI 显示器 Override 工具**：[JayHygge/open-hidpi](https://github.com/JayHygge/open-hidpi)
 - **AMD MCE 禁用**：`AppleMCEReporterDisabler`
