@@ -1,0 +1,6 @@
+# phxboot: Metal for every app; WindowServer composites on the GPU (Metal allowed)
+-mediaanalysisd
+-photoanalysisd
+-Spotlight
+-Dock
+*
