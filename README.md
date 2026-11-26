@@ -32,7 +32,7 @@
 - **HiDPI 缩放支持**：`VermilionAccel.kext` 已内置 `IOFBScalerInfo` 发布与缩放 HiDPI 时序校验，配合自定义显示器 Override（如 [`open-hidpi`](https://github.com/JayHygge/open-hidpi)）即可在 2K 屏上开启 `1920×1080 HiDPI`（`3840×2160` 渲染缓冲 @ 165 Hz）等原生高刷缩放模式。
 - **屏幕共享（Screen Sharing）**：已修复原生 2K（`BGRA8` → `RGBA8` 纹理视图格式列表）及任意缩放 / HiDPI 分辨率（`ScreensharingAgent` OpenCL 缩放核写入带 swizzle 纹理视图落入 dummy 纹理）导致的黑屏问题。
 - **电源与风扇管理**：待机自动关闭 SDMA、开启 GFX Clock Gating 与空闲 DPM（非 165 Hz 极短 VBLANK 模式下自动回落低频，防止 PMFW 卡死）。
-- **已知限制**：AMD 平台无 Apple Hypervisor（不支持依赖 HVF 的虚拟机）、暂未启用系统 S3 睡眠、DRM 受保护视频（如 Apple TV 影片）受限于 Apple 硬件解密路径。
+- **已知限制**：AMD 平台原生无 Apple Hypervisor 支持（如需基于 HVF / Virtualization.framework 运行虚拟机，可关注社区 AMD SVM 虚拟化扩展，如 [RyzenHV](https://github.com/OverlordDev/ryzen-hypervisor.framework) 与 [AMDVirt](https://github.com/liamhnam/AMDVirt)）、暂未启用系统 S3 睡眠、DRM 受保护视频（如 Apple TV 影片）受限于 Apple 硬件解密路径。
 
 ---
 
@@ -145,6 +145,9 @@ sudo reboot
 > - `phxboot-bovram`：启用本地 GDDR6 显存 BO 池（可在文件内按逗号追加需要高速显存的游戏/应用进程名，注意不要加入 `WindowServer`）
 > - *(可选)* VCN 视频解码插件 `PostInstall/VideoPlugIns/PhxVideoDecoder.bundle` 需安装到 `/System/Library/Video/Plug-Ins/`（会解除系统卷封印，如不需要系统级 VideoToolbox 硬解可跳过）。
 > - *(可选)* **2K 显示器 HiDPI 缩放**：`VermilionAccel.kext` 已支持通用缩放 HiDPI 模式，本仓库不包含针对特定显示器的 Override 文件；如需在 2560×1440 等非 4K 屏幕上启用 `1920×1080 HiDPI` 等缩放档位，可使用 [JayHygge/open-hidpi](https://github.com/JayHygge/open-hidpi) 为自己的显示器生成 `/Library/Displays/Contents/Resources/Overrides/DisplayVendorID-*/DisplayProductID-*` 并重启生效。
+> - *(可选)* **AMD 平台虚拟化（未内置）**：本仓库默认未集成虚拟化扩展；如需在 AMD 黑苹果上使用依赖原生虚拟化框架的虚拟机或容器，可参考以下开源 AMD SVM Kext 项目：
+>   - **[RyzenHV](https://github.com/OverlordDev/ryzen-hypervisor.framework)**：通过 Kext 实现 AMD SVM 并接入 `Hypervisor.framework`，在 Parallels、Docker、QEMU 上已有成功案例（含 macOS Tahoe 实测）。
+>   - **[AMDVirt](https://github.com/liamhnam/AMDVirt)**：通过 Kext 实现 AMD SVM 并兼容 Apple 原生虚拟化 API，已宣称跑通 `Virtualization.framework`、UTM 与 Lima。
 
 ---
 
