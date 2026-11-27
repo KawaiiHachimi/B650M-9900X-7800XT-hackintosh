@@ -31,6 +31,7 @@
 - **视频硬件解码**：VCN 4.0（HEVC / AV1）硬件解码可用（`PhxVideoDecoder.bundle` + `libphxdec_hevc.dylib`）。
 - **HiDPI 缩放支持**：`VermilionAccel.kext` 已内置 `IOFBScalerInfo` 发布与缩放 HiDPI 时序校验，配合自定义显示器 Override（如 [`open-hidpi`](https://github.com/JayHygge/open-hidpi)）即可在 2K 屏上开启 `1920×1080 HiDPI`（`3840×2160` 渲染缓冲 @ 165 Hz）等原生高刷缩放模式。
 - **屏幕共享（Screen Sharing）**：已修复原生 2K（`BGRA8` → `RGBA8` 纹理视图格式列表）及任意缩放 / HiDPI 分辨率（`ScreensharingAgent` OpenCL 缩放核写入带 swizzle 纹理视图落入 dummy 纹理）导致的黑屏问题。
+- **Edge 硬件加速**：随仓库提供的 Metal 插件对应 Navi 32 驱动提交 `cfde624`，修复了 Geekbench 图标镜框变成矩形、渐变重复叠加的问题。在 RX 7800 XT 上保留 GPU 光栅化时，官网原始图标与 Apple M5 Pro 硬件参考图的 RGB 通道最大差值为 1。该版本也修正了非对齐缓冲区初始化与多采样传输检查，并减少了热着色器缓存的时间戳写入。[实机验证记录](https://github.com/KawaiiHachimi/vermilion-navi32/blob/f5874a0/.agents/findings/2026-11-27-navi32-edge-and-plugin.md)
 - **电源与风扇管理**：待机自动关闭 SDMA、开启 GFX Clock Gating 与空闲 DPM（非 165 Hz 极短 VBLANK 模式下自动回落低频，防止 PMFW 卡死）。
 - **已知限制**：AMD 平台原生无 Apple Hypervisor 支持（如需基于 HVF / Virtualization.framework 运行虚拟机，可关注社区 AMD SVM 虚拟化扩展，如 [RyzenHV](https://github.com/OverlordDev/ryzen-hypervisor.framework) 与 [AMDVirt](https://github.com/liamhnam/AMDVirt)）、暂未启用系统 S3 睡眠、DRM 受保护视频（如 Apple TV 影片）受限于 Apple 硬件解密路径。
 
@@ -107,6 +108,13 @@ sudo chmod 0644 /Library/GPUBundles/nvmtl-allow.txt
 ### 4. 补齐 AIR 运行库与 Navi 32 固件
 
 1. **AIR 运行库（`air-runtime`）**：通过 MacPorts 安装 `llvm-21` 与 `spirv-tools`，执行 `PostInstall/gpu-scripts/phxctl/air_runtime_install.sh` 将自包含、ad-hoc 签名的 LLVM 动态库安装到 `/Library/GPUBundles/NVMTLDriver.bundle/Contents/MacOS/air-runtime/`，并链接 `spirv-val` 到 `/usr/local/bin/spirv-val`（详细步骤见 [vermilion-navi32 安装手册](https://github.com/KawaiiHachimi/vermilion-navi32/blob/navi32-port/docs/NAVI32-INSTALL.md)）。
+   补齐或更新运行库后，执行以下命令为最终安装的 bundle 重新签名并校验。
+
+   ```bash
+   sudo codesign --force --sign - /Library/GPUBundles/NVMTLDriver.bundle
+   codesign --verify --strict /Library/GPUBundles/NVMTLDriver.bundle
+   ```
+
 2. **Navi 32 固件**：从 Linux `linux-firmware` 的 `amdgpu/` 目录复制以下 13 个固件到 `~/gpu/fw/navi32/`：
    - `dcn_3_2_0_dmcub.bin`
    - `gc_11_0_3_imu.bin`、`gc_11_0_3_me.bin`、`gc_11_0_3_mec.bin`、`gc_11_0_3_mes1.bin`、`gc_11_0_3_mes_2.bin`、`gc_11_0_3_pfp.bin`、`gc_11_0_3_rlc.bin`
